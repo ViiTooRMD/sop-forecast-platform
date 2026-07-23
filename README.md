@@ -1,46 +1,138 @@
-# S&OP Forecast Platform
+# S&OP Sinalpi — Streamlit V2
 
-Protótipo navegável em Streamlit para direcionar o desenvolvimento da plataforma de S&OP.
+Versão reformulada para reproduzir a estrutura visual do mockup aprovado e ampliar o detalhamento funcional.
 
-## O que esta versão demonstra
+## Principais diferenças em relação ao protótipo anterior
 
-- Resumo executivo com demanda consensada, receita em risco, gap de FTE, frota e EBITDA.
-- Etapa de consenso de demanda com override comercial, restrições e piso por filial.
-- Capacidade operacional de pessoas por coleta, transbordo e entrega.
-- Capacidade de frota e necessidade estimada de veículos adicionais.
-- Conciliação financeira com waterfall de EBITDA.
-- Camada simulada de premissas, governança e auditoria.
-- Cenários Base, Peak Season, Otimista e Conservador.
+- Layout branco e azul, compacto e corporativo.
+- Menu lateral azul-marinho semelhante ao mockup.
+- Sem cabeçalho gradiente grande.
+- Cards de indicadores menores e alinhados.
+- Filtros horizontais no topo de cada tela.
+- Gráficos com fundo branco, legenda compacta e paleta padronizada.
+- Visão consolidada de demanda com três blocos lado a lado.
+- Página de pessoas com gráfico diário, gráfico mensal e resumo de headcount.
+- Página de frota com drop size, demanda versus capacidade em viagens e frota sugerida.
+- Página financeira com resumo, waterfall e comparação de cenários.
+- Editores detalhados para restrições, produtividade, frota, custos e piso.
+- Motor integrado de demanda → pessoas → veículos → EBITDA.
 
-Todos os dados são sintéticos e existem apenas para validar a experiência, a navegação e o encadeamento das decisões.
+## Telas
 
-## Executar localmente
+1. Resumo Executivo.
+2. Demanda & Restrições B2C.
+3. Capacidade de Pessoas.
+4. Frota & Veículos.
+5. Financeiro & EBITDA.
+6. Premissas & Governança.
 
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-streamlit run streamlit_app.py
-```
-
-## Direcionamento de arquitetura
-
-A próxima evolução deve separar o protótipo em:
+## Regra de demanda
 
 ```text
-pages/          # jornadas e telas
-src/data.py     # integrações e contratos de dados
-src/engine.py   # regras de demanda, capacidade e financeiro
-src/ui.py       # componentes visuais
-src/models.py   # entidades de cenário, aprovação e auditoria
-tests/          # testes unitários e reconciliação
+previsão do cenário = previsão do modelo × multiplicador do cenário
+
+demanda após override = previsão do cenário × (1 + override %)
+
+demanda após restrição = menor entre:
+- demanda após override × (1 - restrição efetiva %)
+- limite diário, quando preenchido
+
+piso em caixas = demanda após override da filial × piso percentual
+
+demanda final da filial = máximo(demanda após restrições, piso em caixas)
 ```
 
-## Roadmap recomendado
+A recomposição do piso pode ser configurada como:
 
-1. Validar conceitos e UX com Comercial, Operações e Finanças.
-2. Substituir dados sintéticos pela camada de leitura do BigQuery.
-3. Versionar cenários e overrides em banco.
-4. Implementar workflow Comercial → Operações → Finanças → Executivo.
-5. Criar autenticação, perfis, trilha de auditoria e aprovação.
-6. Automatizar testes de reconciliação antes da publicação executiva.
+- Proporcional.
+- Prioridade estratégica.
+- Maior margem.
+- B2B primeiro.
+
+## Regra de pessoas
+
+```text
+capacidade unitária FTE/dia =
+horas produtivas × produtividade × eficiência × (1 - absenteísmo)
+
+capacidade regular = FTE atual × capacidade unitária
+
+FTE necessário = demanda / capacidade unitária
+```
+
+O déficit é coberto na seguinte ordem:
+
+1. Capacidade regular.
+2. Hora extra, limitada por FTE/dia.
+3. Terceiro.
+4. Contratação/temporário quando o gap for recorrente.
+
+## Regra de veículos
+
+```text
+capacidade unitária diária =
+drop size × paradas/viagem × viagens/dia × ocupação × disponibilidade
+```
+
+O novo volume é calculado contra a média diária de entrega dos 90 dias históricos anteriores à data-base. A diferença positiva é apropriada entre os tipos de veículo conforme a tabela de participação por filial.
+
+```text
+frota necessária = teto(demanda apropriada / capacidade unitária diária)
+```
+
+## Instalação — Windows
+
+Abra o Prompt de Comando na pasta descompactada:
+
+```bat
+cd C:\caminho\sop_streamlit_v2
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+## Instalação — Linux/macOS
+
+```bash
+cd /caminho/sop_streamlit_v2
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+## Estrutura
+
+```text
+sop_streamlit_v2/
+├── app.py
+├── requirements.txt
+├── README.md
+├── DOCUMENTACAO_TECNICA.md
+├── .streamlit/config.toml
+├── src/
+│   ├── data.py
+│   ├── engine.py
+│   ├── pages.py
+│   ├── charts.py
+│   ├── components.py
+│   ├── formatting.py
+│   └── theme.py
+└── tests/
+    └── test_engine.py
+```
+
+## Integração com bases reais
+
+Substitua `build_demo_data()` em `src/data.py` por consultas ou leituras das bases reais. Preserve o dicionário de colunas ou crie uma camada de mapeamento.
+
+Em produção:
+
+- Não use `st.session_state` como banco permanente.
+- Salve cenários e alterações em banco relacional.
+- Registre usuário, data, valor anterior, valor novo, vigência, motivo e aprovação.
+- Faça reconciliação com TMS, RH, contratos de frota e DRE.
+- Crie autenticação e perfis de acesso.
